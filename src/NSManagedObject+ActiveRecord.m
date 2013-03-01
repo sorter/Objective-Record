@@ -145,18 +145,22 @@
 
 - (BOOL)saveTheContext {
 
-    if (self.managedObjectContext == nil ||
-        ![self.managedObjectContext hasChanges]) return YES;
-    
-    NSError *error = nil;
-    BOOL save = [self.managedObjectContext save:&error];
-
-    if (!save || error) {
-        NSLog(@"Unresolved error in saving context for entity: %@!\n Error: %@", self, error);
-        return NO;
-    }
-    
-    return YES;
+	__block BOOL savedOK = YES;
+	
+	[self.managedObjectContext performBlockAndWait:^{
+		if (self.managedObjectContext == nil ||
+			![self.managedObjectContext hasChanges]) savedOK == YES;
+			
+		NSError *error = nil;
+		BOOL save = [self.managedObjectContext save:&error];
+		
+		if (!save || error) {
+			NSLog(@"Unresolved error in saving context for entity: %@!\n Error: %@", self, error);
+			savedOK = NO;
+		}
+	}];
+	
+	return savedOK;
 }
 
 @end
