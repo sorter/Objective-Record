@@ -149,7 +149,7 @@
 	
 	[self.managedObjectContext performBlockAndWait:^{
 		if (self.managedObjectContext == nil ||
-			![self.managedObjectContext hasChanges]) savedOK == YES;
+			![self.managedObjectContext hasChanges]) savedOK = YES;
 			
 		NSError *error = nil;
 		BOOL save = [self.managedObjectContext save:&error];
