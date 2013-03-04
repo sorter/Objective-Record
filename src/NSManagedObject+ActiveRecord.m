@@ -33,7 +33,7 @@
     va_start(va_arguments, format);
     NSString *condition = [[NSString alloc] initWithFormat:format arguments:va_arguments];
     va_end(va_arguments);
-
+	
     return [self where:condition];
 }
 
@@ -46,7 +46,7 @@
 + (NSArray *)where:(id)condition inContext:(NSManagedObjectContext *)context {
     
     NSPredicate *predicate = ([condition isKindOfClass:[NSPredicate class]]) ? condition :
-                                                [self predicateFromStringOrDict:condition];
+	[self predicateFromStringOrDict:condition];
     
     return [self fetchWithPredicate:predicate
                           inContext:context];
@@ -104,7 +104,7 @@
     
     [conditions.allKeys each:^(id attribute) {
         [queryString appendFormat:@"%@ == '%@'", attribute, [conditions valueForKey:attribute]];
-
+		
         if (attribute == conditions.allKeys.last) return;
         [queryString appendString:@" AND "];
     }];
@@ -138,19 +138,24 @@
     NSFetchRequest *request = [self createFetchRequestInContext:context];
     [request setPredicate:predicate];
     
-    NSArray *fetchedObjects = [context executeFetchRequest:request error:nil];
+	__block NSArray *fetchedObjects;
+	
+	[context performBlockAndWait:^{
+		fetchedObjects = [NSArray arrayWithArray:[context executeFetchRequest:request error:nil]];
+	}];
+	
     if (fetchedObjects.count > 0) return fetchedObjects;
     return nil;
 }
 
 - (BOOL)saveTheContext {
-
+	
 	__block BOOL savedOK = YES;
 	
 	[self.managedObjectContext performBlockAndWait:^{
 		if (self.managedObjectContext == nil ||
 			![self.managedObjectContext hasChanges]) savedOK = YES;
-			
+		
 		NSError *error = nil;
 		BOOL save = [self.managedObjectContext save:&error];
 		
