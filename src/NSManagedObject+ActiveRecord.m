@@ -72,8 +72,14 @@
 }
 
 + (id)createInContext:(NSManagedObjectContext *)context {
-    return [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass(self)
-                                         inManagedObjectContext:context];
+	__block NSEntityDescription *description;
+	
+	[context performBlockAndWait:^{
+		description = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass(self)
+													inManagedObjectContext:context];
+	}];
+	
+    return description;
 }
 
 - (BOOL)save {
