@@ -91,17 +91,22 @@ static CoreDataManager *singleton;
 
 
 - (BOOL)saveContext {
-    if (self.managedObjectContext == nil) return NO;
-    if (![self.managedObjectContext hasChanges])return NO;
+	__block BOOL savedOK = NO;
+	
+	[self.managedObjectContext performBlockAndWait:^{
+		if (self.managedObjectContext == nil || ![self.managedObjectContext hasChanges]) return;
+		
+		NSError *error = nil;
+		
+		if (![self.managedObjectContext save:&error]) {
+			NSLog(@"Unresolved error in saving context! %@, %@", error, [error userInfo]);
+			return;
+		}
+		
+		savedOK = YES;
+	}];
     
-    NSError *error = nil;
-    
-    if (![self.managedObjectContext save:&error]) {
-        NSLog(@"Unresolved error in saving context! %@, %@", error, [error userInfo]);
-        return NO;
-    }
-    
-    return YES;
+    return savedOK;
 }
 
 #pragma mark - Application's Documents directory
