@@ -83,10 +83,15 @@
 + (id)createInContext:(NSManagedObjectContext *)context {
 	__block NSEntityDescription *description;
 
-	[context performBlockAndWait:^{
+	if (context.concurrencyType == NSMainQueueConcurrencyType) {
 		description = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass(self)
 													inManagedObjectContext:context];
-	}];
+	} else if (context.concurrencyType == NSPrivateQueueConcurrencyType) {
+		[context performBlockAndWait:^{
+			description = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass(self)
+														inManagedObjectContext:context];
+		}];
+	}
 
 	return description;
 }
@@ -155,9 +160,14 @@
 
 	__block NSArray *fetchedObjects;
 
-	[context performBlockAndWait:^{
+	if (context.concurrencyType == NSMainQueueConcurrencyType) {
 		fetchedObjects = [NSArray arrayWithArray:[context executeFetchRequest:request error:nil]];
-	}];
+	} else if (context.concurrencyType == NSPrivateQueueConcurrencyType) {
+		__block NSArray *fetchedObjects;
+		[context performBlockAndWait:^{
+			fetchedObjects = [NSArray arrayWithArray:[context executeFetchRequest:request error:nil]];
+		}];
+	}
 
 	if (fetchedObjects.count > 0) return fetchedObjects;
 	return nil;
@@ -167,18 +177,36 @@
 
 	__block BOOL savedOK = YES;
 
-	[self.managedObjectContext performBlockAndWait:^{
+	if (self.managedObjectContext.concurrencyType == NSMainQueueConcurrencyType) {
 		if (self.managedObjectContext == nil ||
-			![self.managedObjectContext hasChanges]) savedOK = YES;
+			![self.managedObjectContext hasChanges]) return YES;
 
 		NSError *error = nil;
+
 		BOOL save = [self.managedObjectContext save:&error];
 
 		if (!save || error) {
 			NSLog(@"Unresolved error in saving context for entity: %@!\n Error: %@", self, error);
-			savedOK = NO;
+			return NO;
 		}
-	}];
+
+	} else if (self.managedObjectContext.concurrencyType == NSPrivateQueueConcurrencyType) {
+		[self.managedObjectContext performBlockAndWait:^{
+			if (self.managedObjectContext == nil ||
+				![self.managedObjectContext hasChanges]) {
+
+			} else {
+				NSError *error = nil;
+				BOOL save = [self.managedObjectContext save:&error];
+
+				if (!save || error) {
+					NSLog(@"Unresolved error in saving context for entity: %@!\n Error: %@", self, error);
+					savedOK = NO;
+				}
+			}
+		}];
+	}
+
 
 	return savedOK;
 }
