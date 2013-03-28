@@ -83,10 +83,10 @@
 + (id)createInContext:(NSManagedObjectContext *)context {
 	__block NSEntityDescription *description;
 
-	if (context.concurrencyType == NSMainQueueConcurrencyType) {
+	if (context.concurrencyType == NSMainQueueConcurrencyType && [[NSThread currentThread] isEqual:[NSThread mainThread]]) {
 		description = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass(self)
 													inManagedObjectContext:context];
-	} else if (context.concurrencyType == NSPrivateQueueConcurrencyType) {
+	} else {
 		[context performBlockAndWait:^{
 			description = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass(self)
 														inManagedObjectContext:context];
@@ -160,10 +160,9 @@
 
 	__block NSArray *fetchedObjects;
 
-	if (context.concurrencyType == NSMainQueueConcurrencyType) {
+	if (context.concurrencyType == NSMainQueueConcurrencyType && [[NSThread currentThread] isEqual:[NSThread mainThread]]) {
 		fetchedObjects = [NSArray arrayWithArray:[context executeFetchRequest:request error:nil]];
-	} else if (context.concurrencyType == NSPrivateQueueConcurrencyType) {
-		__block NSArray *fetchedObjects;
+	} else {
 		[context performBlockAndWait:^{
 			fetchedObjects = [NSArray arrayWithArray:[context executeFetchRequest:request error:nil]];
 		}];
@@ -177,7 +176,7 @@
 
 	__block BOOL savedOK = YES;
 
-	if (self.managedObjectContext.concurrencyType == NSMainQueueConcurrencyType) {
+	if (self.managedObjectContext.concurrencyType == NSMainQueueConcurrencyType && [[NSThread currentThread] isEqual:[NSThread mainThread]]) {
 		if (self.managedObjectContext == nil ||
 			![self.managedObjectContext hasChanges]) return YES;
 
@@ -190,7 +189,7 @@
 			return NO;
 		}
 
-	} else if (self.managedObjectContext.concurrencyType == NSPrivateQueueConcurrencyType) {
+	} else {
 		[self.managedObjectContext performBlockAndWait:^{
 			if (self.managedObjectContext == nil ||
 				![self.managedObjectContext hasChanges]) {
