@@ -24,7 +24,6 @@
 }
 
 + (NSArray *)allInContext:(NSManagedObjectContext *)context {
-
 	return [self fetchWithPredicate:nil inContext:context];
 }
 
@@ -33,7 +32,7 @@
 	va_start(va_arguments, format);
 	NSString *condition = [[NSString alloc] initWithFormat:format arguments:va_arguments];
 	va_end(va_arguments);
-
+	
 	return [self where:condition];
 }
 
@@ -42,21 +41,19 @@
 	va_start(va_arguments, format);
 	NSString *condition = [[NSString alloc] initWithFormat:format arguments:va_arguments];
 	va_end(va_arguments);
-
+	
 	return [self where:condition inContext:context];
 }
 
 + (NSArray *)where:(id)condition {
-
 	return [self where:condition
 			 inContext:[NSManagedObjectContext defaultContext]];
 }
 
 + (NSArray *)where:(id)condition inContext:(NSManagedObjectContext *)context {
-
 	NSPredicate *predicate = ([condition isKindOfClass:[NSPredicate class]]) ? condition :
 	[self predicateFromStringOrDict:condition];
-
+	
 	return [self fetchWithPredicate:predicate
 						  inContext:context];
 }
@@ -75,14 +72,14 @@
 
 + (id)create:(NSDictionary *)attributes inContext:(NSManagedObjectContext *)context {
 	NSManagedObject *newEntity = [self createInContext:context];
-
+	
 	[newEntity setValuesForKeysWithDictionary:attributes];
 	return newEntity;
 }
 
 + (id)createInContext:(NSManagedObjectContext *)context {
 	__block NSEntityDescription *description;
-
+	
 	if (context.concurrencyType == NSMainQueueConcurrencyType && [[NSThread currentThread] isEqual:[NSThread mainThread]]) {
 		description = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass(self)
 													inManagedObjectContext:context];
@@ -92,7 +89,7 @@
 														inManagedObjectContext:context];
 		}];
 	}
-
+	
 	return description;
 }
 
@@ -106,12 +103,11 @@
 }
 
 + (void)deleteAll {
-
 	[self deleteAllInContext:[NSManagedObjectContext defaultContext]];
 }
 
 + (void)deleteAllInContext:(NSManagedObjectContext *)context {
-
+	
 	[[self allInContext:context] each:^(id object) {
 		[object delete];
 	}];
@@ -121,30 +117,33 @@
 
 + (NSString *)queryStringFromDictionary:(NSDictionary *)conditions {
 	NSMutableString *queryString = [NSMutableString new];
-
-	[conditions.allKeys each:^(id attribute) {
-		[queryString appendFormat:@"%@ == '%@'", attribute, [conditions valueForKey:attribute]];
-
+	
+	[conditions each:^(id attribute, id value) {
+		if ([value isKindOfClass:[NSString class]])
+			[queryString appendFormat:@"%@ == '%@'", attribute, value];
+		else
+			[queryString appendFormat:@"%@ == %@", attribute, value];
+		
 		if (attribute == conditions.allKeys.last) return;
 		[queryString appendString:@" AND "];
 	}];
-
+	
 	return queryString;
 }
 
 + (NSPredicate *)predicateFromStringOrDict:(id)condition {
-
+	
 	if ([condition isKindOfClass:[NSString class]])
 		return [NSPredicate predicateWithFormat:condition];
-
+	
 	else if ([condition isKindOfClass:[NSDictionary class]])
 		return [NSPredicate predicateWithFormat:[self queryStringFromDictionary:condition]];
-
+	
 	return nil;
 }
 
 + (NSFetchRequest *)createFetchRequestInContext:(NSManagedObjectContext *)context {
-
+	
 	NSFetchRequest *request = [NSFetchRequest new];
 	NSEntityDescription *entity = [NSEntityDescription entityForName:NSStringFromClass(self)
 											  inManagedObjectContext:context];
@@ -154,50 +153,42 @@
 
 + (NSArray *)fetchWithPredicate:(NSPredicate *)predicate
 					  inContext:(NSManagedObjectContext *)context {
-
+	
 	NSFetchRequest *request = [self createFetchRequestInContext:context];
 	[request setPredicate:predicate];
-
-	__block NSArray *fetchedObjects;
-
-	if (context.concurrencyType == NSMainQueueConcurrencyType && [[NSThread currentThread] isEqual:[NSThread mainThread]]) {
-		fetchedObjects = [NSArray arrayWithArray:[context executeFetchRequest:request error:nil]];
-	} else {
-		[context performBlockAndWait:^{
-			fetchedObjects = [NSArray arrayWithArray:[context executeFetchRequest:request error:nil]];
-		}];
-	}
-
+	
+	NSArray *fetchedObjects = [NSArray arrayWithArray:[context executeFetchRequest:request error:nil]];
+	
 	if (fetchedObjects.count > 0) return fetchedObjects;
 	return nil;
 }
 
 - (BOOL)saveTheContext {
-
+	
 	__block BOOL savedOK = YES;
-
+	
 	if (self.managedObjectContext.concurrencyType == NSMainQueueConcurrencyType && [[NSThread currentThread] isEqual:[NSThread mainThread]]) {
 		if (self.managedObjectContext == nil ||
 			![self.managedObjectContext hasChanges]) return YES;
-
+		
 		NSError *error = nil;
-
+		
 		BOOL save = [self.managedObjectContext save:&error];
-
+		
 		if (!save || error) {
 			NSLog(@"Unresolved error in saving context for entity: %@!\n Error: %@", self, error);
 			return NO;
 		}
-
+		
 	} else {
 		[self.managedObjectContext performBlockAndWait:^{
 			if (self.managedObjectContext == nil ||
 				![self.managedObjectContext hasChanges]) {
-
+				
 			} else {
 				NSError *error = nil;
 				BOOL save = [self.managedObjectContext save:&error];
-
+				
 				if (!save || error) {
 					NSLog(@"Unresolved error in saving context for entity: %@!\n Error: %@", self, error);
 					savedOK = NO;
@@ -205,8 +196,8 @@
 			}
 		}];
 	}
-
-
+	
+	
 	return savedOK;
 }
 
