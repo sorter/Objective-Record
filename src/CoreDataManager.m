@@ -26,6 +26,38 @@ static CoreDataManager *singleton;
     return singleton;
 }
 
+- (id)init {
+	self = [super init];
+	if (self) {
+		//Listen for notification when saving the context
+		[[NSNotificationCenter defaultCenter] addObserver:self
+												 selector:@selector(contextChanged:)
+													 name:NSManagedObjectContextDidSaveNotification
+												   object:nil];
+	}
+	
+	return self;
+}
+
+- (void)dealloc {
+	//Remove the notification
+	[[NSNotificationCenter defaultCenter] removeObserver:self name:NSManagedObjectContextDidSaveNotification object:nil];
+}
+
+- (void)contextChanged:(NSNotification*)notification {
+	//We don't need to merge changes that we made
+	if ([notification object] == [self managedObjectContext]) return;
+	
+	//Make sure the work is done on the main thread
+	if (![NSThread isMainThread]) {
+		[self performSelectorOnMainThread:@selector(contextChanged:) withObject:notification waitUntilDone:YES];
+		return;
+	}
+	
+	//Then merge the changes into the context
+	[[self managedObjectContext] mergeChangesFromContextDidSaveNotification:notification];
+}
+
 
 #pragma mark - Private
 
@@ -68,7 +100,7 @@ static CoreDataManager *singleton;
 }
 
 -(void) setUpPersistentStoreCoordinator {
-
+	
     NSURL *storeURL = [self.applicationDocumentsDirectory URLByAppendingPathComponent:[self databaseName]];
     NSError *error = nil;
     _persistentStoreCoordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self managedObjectModel]];
@@ -85,7 +117,7 @@ static CoreDataManager *singleton;
 {
     if (_persistentStoreCoordinator) return _persistentStoreCoordinator;
     
-    [self setUpPersistentStoreCoordinator];   
+    [self setUpPersistentStoreCoordinator];
     return _persistentStoreCoordinator;
 }
 
@@ -111,7 +143,7 @@ static CoreDataManager *singleton;
 
 #pragma mark - Application's Documents directory
 - (NSURL *)applicationDocumentsDirectory {
-    return [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory 
+    return [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory
                                                    inDomains:NSUserDomainMask] lastObject];
 }
 
