@@ -167,29 +167,23 @@
 	
 	__block BOOL savedOK = YES;
 	
-	if (self.managedObjectContext.concurrencyType == NSMainQueueConcurrencyType && [[NSThread currentThread] isEqual:[NSThread mainThread]]) {
+	if (self.managedObjectContext.concurrencyType == NSMainQueueConcurrencyType) {
 		if (self.managedObjectContext == nil ||
 			![self.managedObjectContext hasChanges]) return YES;
 		
 		NSError *error = nil;
 		
-		BOOL save = [self.managedObjectContext save:&error];
-		
-		if (!save || error) {
+		if (![self.managedObjectContext save:&error]) {
 			NSLog(@"Unresolved error in saving context for entity: %@!\n Error: %@", self, error);
 			return NO;
 		}
 		
 	} else {
 		[self.managedObjectContext performBlockAndWait:^{
-			if (self.managedObjectContext == nil ||
-				![self.managedObjectContext hasChanges]) {
-				
-			} else {
+			if (self.managedObjectContext != nil || [self.managedObjectContext hasChanges]) {
 				NSError *error = nil;
-				BOOL save = [self.managedObjectContext save:&error];
 				
-				if (!save || error) {
+				if (![self.managedObjectContext save:&error]) {
 					NSLog(@"Unresolved error in saving context for entity: %@!\n Error: %@", self, error);
 					savedOK = NO;
 				}
