@@ -46,7 +46,7 @@ static CoreDataManager *singleton;
 
 - (void)contextChanged:(NSNotification*)notification {
 	//We don't need to merge changes that we made
-	if ([notification object] == [self managedObjectContext]) return;
+	if ([notification object] == [self managedObjectContext] || [[notification object] parentContext] == [self managedObjectContext]) return;
 
 	//Make sure the work is done on the main thread
 	if (![NSThread isMainThread]) {
