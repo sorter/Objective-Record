@@ -119,9 +119,12 @@
 	NSMutableString *queryString = [NSMutableString new];
 	
 	[conditions each:^(id attribute, id value) {
-		if ([value isKindOfClass:[NSString class]])
-			[queryString appendFormat:@"%@ == '%@'", attribute, value];
-		else
+		if ([value isKindOfClass:[NSString class]]) {
+            if ([value isEqualToString:@"nil"]) {
+                [queryString appendFormat:@"%@ = %@", attribute, value];
+            else
+			    [queryString appendFormat:@"%@ == '%@'", attribute, value];
+        } else
 			[queryString appendFormat:@"%@ == %@", attribute, value];
 		
 		if (attribute == conditions.allKeys.last) return;
