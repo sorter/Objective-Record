@@ -120,7 +120,7 @@
 	
 	[conditions each:^(id attribute, id value) {
 		if ([value isKindOfClass:[NSString class]]) {
-            if ([value isEqualToString:@"nil"]) {
+            if ([value isEqualToString:@"nil"]) 
                 [queryString appendFormat:@"%@ = %@", attribute, value];
             else
 			    [queryString appendFormat:@"%@ == '%@'", attribute, value];
